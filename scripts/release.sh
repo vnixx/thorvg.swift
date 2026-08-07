@@ -160,8 +160,10 @@ _ = tvg_engine_init(0)
 _ = tvg_engine_term()
 EOF
 
-# Give GitHub a moment to serve the asset; clear local fingerprint if we retagged.
+# Give GitHub a moment to serve the asset; clear local SPM caches if we retagged
+# the same version (fingerprint + binary artifact URL cache).
 rm -f "${HOME}/Library/org.swift.swiftpm/security/fingerprints/thorvg.swift-"*.json 2>/dev/null || true
+rm -rf "${HOME}/Library/Caches/org.swift.swiftpm/artifacts/"*ThorVG_xcframework_zip 2>/dev/null || true
 sleep 3
 (
   cd "$VERIFY_DIR"
