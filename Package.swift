@@ -19,7 +19,7 @@ let package = Package(
         .binaryTarget(
             name: "ThorVG",
             url: "https://github.com/vnixx/thorvg.swift/releases/download/0.0.1/ThorVG.xcframework.zip",
-            checksum: "345aed053b200b9ee2960d88715e948600ffacb17c3973ddee172894a02a0593"
+            checksum: "fcdce8df31ae32ed5e5f0edda10760e879816ceadf252402517b1805e74b0b5a"
         )
     ]
 )
