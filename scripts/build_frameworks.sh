@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build a Ruyi-oriented ThorVG.xcframework (CPU + SVG + C API only).
-# Apple Silicon only (macOS arm64 / iOS arm64 / iOS Simulator arm64).
+# Apple Silicon only: macOS / iOS / tvOS / watchOS / visionOS (+ simulators).
 set -euo pipefail
 
 RED='\033[0;31m'
@@ -18,7 +18,7 @@ TEMP_DIR="temp_frameworks"
 LIB_DIR="lib"
 HEADERS_DIR="${TEMP_DIR}/Headers"
 
-echo -e "${GREEN}Building SVG-trimmed ThorVG XCFramework (arm64 only)...${NC}"
+echo -e "${GREEN}Building SVG-trimmed ThorVG XCFramework (arm64, multi-platform)...${NC}"
 
 THORVG_TAG="${THORVG_TAG:-v1.1.0}"
 if [[ ! -f "$THORVG_DIR/meson.build" ]]; then
@@ -30,10 +30,8 @@ command -v meson >/dev/null || { echo -e "${RED}brew install meson${NC}"; exit 1
 command -v ninja >/dev/null || { echo -e "${RED}brew install ninja${NC}"; exit 1; }
 
 rm -rf "$BUILD_DIR" "$OUTPUT_DIR" "$TEMP_DIR" "$LIB_DIR"
-mkdir -p "$TEMP_DIR" "$LIB_DIR" "$HEADERS_DIR"
+mkdir -p "$TEMP_DIR" "$LIB_DIR" "$HEADERS_DIR" "$TEMP_DIR/libs"
 
-IPHONEOS_SDK="$(xcrun --show-sdk-path --sdk iphoneos)"
-IPHONESIMULATOR_SDK="$(xcrun --show-sdk-path --sdk iphonesimulator)"
 XCODE_DEVELOPER_DIR="$(xcode-select -p)"
 echo -e "${GREEN}Xcode: ${XCODE_DEVELOPER_DIR}${NC}"
 
@@ -57,16 +55,27 @@ MESON_BASE=(
 )
 
 MESON_MACOS=("${MESON_BASE[@]}" -Dsimd=true)
-MESON_IOS=("${MESON_BASE[@]}" -Dsimd=false)
+MESON_APPLE=("${MESON_BASE[@]}" -Dsimd=false)
+
+# PLATFORM|SDK_NAME|MIN_VERSION|TRIPLE_OS|LIB_BASENAME
+PLATFORMS=(
+  "iphoneos|iphoneos|13.0|ios|ios"
+  "iphonesimulator|iphonesimulator|13.0|ios|iossimulator"
+  "appletvos|appletvos|13.0|tvos|tvos"
+  "appletvsimulator|appletvsimulator|13.0|tvos|tvossimulator"
+  "watchos|watchos|7.0|watchos|watchos"
+  "watchsimulator|watchsimulator|7.0|watchos|watchossimulator"
+  "xros|xros|1.0|xros|xros"
+  "xrsimulator|xrsimulator|1.0|xros|xrossimulator"
+)
 
 create_cross_file() {
-  local ARCH=$1 SDK_PATH=$2 PLATFORM=$3 OUTPUT_FILE=$4
-  local MIN_VERSION="13.0"
+  local ARCH=$1 SDK_PATH=$2 PLATFORM=$3 TRIPLE_OS=$4 MIN_VERSION=$5 OUTPUT_FILE=$6
   local TARGET_TRIPLE
-  if [[ "$PLATFORM" == "iphonesimulator" ]]; then
-    TARGET_TRIPLE="${ARCH}-apple-ios${MIN_VERSION}-simulator"
+  if [[ "$PLATFORM" == *simulator ]]; then
+    TARGET_TRIPLE="${ARCH}-apple-${TRIPLE_OS}${MIN_VERSION}-simulator"
   else
-    TARGET_TRIPLE="${ARCH}-apple-ios${MIN_VERSION}"
+    TARGET_TRIPLE="${ARCH}-apple-${TRIPLE_OS}${MIN_VERSION}"
   fi
   cat > "$OUTPUT_FILE" << EOF
 [binaries]
@@ -92,36 +101,46 @@ endian = 'little'
 EOF
 }
 
-build_for_platform() {
-  local ARCH=$1 PLATFORM=$2 SDK_PATH=$3
-  local BUILD_PATH="${BUILD_DIR}/${PLATFORM}-${ARCH}"
-  echo -e "${GREEN}Building ${PLATFORM} ${ARCH}...${NC}"
-
-  if [[ "$PLATFORM" == "macosx" ]]; then
-    local MAC_MIN="-mmacosx-version-min=10.15"
-    meson setup "$BUILD_PATH" "$THORVG_DIR" \
-      "${MESON_MACOS[@]}" \
-      -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
-      -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
-  else
-    local CROSS_FILE="$BUILD_DIR/cross-${PLATFORM}-${ARCH}.txt"
-    create_cross_file "$ARCH" "$SDK_PATH" "$PLATFORM" "$CROSS_FILE"
-    meson setup "$BUILD_PATH" "$THORVG_DIR" \
-      "${MESON_IOS[@]}" \
-      --cross-file="$CROSS_FILE"
-  fi
-
+build_macos() {
+  local ARCH="arm64"
+  local BUILD_PATH="${BUILD_DIR}/macosx-${ARCH}"
+  echo -e "${GREEN}Building macosx ${ARCH}...${NC}"
+  local MAC_MIN="-mmacosx-version-min=10.15"
+  meson setup "$BUILD_PATH" "$THORVG_DIR" \
+    "${MESON_MACOS[@]}" \
+    -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
+    -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
   meson compile -C "$BUILD_PATH"
+  cp "${BUILD_PATH}/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-macos.a"
+}
+
+build_apple_platform() {
+  local PLATFORM=$1 SDK_NAME=$2 MIN_VERSION=$3 TRIPLE_OS=$4 LIB_BASENAME=$5
+  local ARCH="arm64"
+  local SDK_PATH
+  SDK_PATH="$(xcrun --show-sdk-path --sdk "$SDK_NAME")"
+  local BUILD_PATH="${BUILD_DIR}/${PLATFORM}-${ARCH}"
+  echo -e "${GREEN}Building ${PLATFORM} ${ARCH} (sdk=${SDK_NAME})...${NC}"
+
+  local CROSS_FILE="$BUILD_DIR/cross-${PLATFORM}-${ARCH}.txt"
+  mkdir -p "$BUILD_DIR"
+  create_cross_file "$ARCH" "$SDK_PATH" "$PLATFORM" "$TRIPLE_OS" "$MIN_VERSION" "$CROSS_FILE"
+
+  meson setup "$BUILD_PATH" "$THORVG_DIR" \
+    "${MESON_APPLE[@]}" \
+    --cross-file="$CROSS_FILE"
+  meson compile -C "$BUILD_PATH"
+  cp "${BUILD_PATH}/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-${LIB_BASENAME}.a"
 }
 
 echo -e "${YELLOW}=== macOS (arm64) ===${NC}"
-build_for_platform "arm64" "macosx" ""
+build_macos
 
-echo -e "${YELLOW}=== iOS device (arm64) ===${NC}"
-build_for_platform "arm64" "iphoneos" "$IPHONEOS_SDK"
-
-echo -e "${YELLOW}=== iOS simulator (arm64) ===${NC}"
-build_for_platform "arm64" "iphonesimulator" "$IPHONESIMULATOR_SDK"
+for entry in "${PLATFORMS[@]}"; do
+  IFS='|' read -r PLATFORM SDK_NAME MIN_VERSION TRIPLE_OS LIB_BASENAME <<<"$entry"
+  echo -e "${YELLOW}=== ${PLATFORM} (arm64) ===${NC}"
+  build_apple_platform "$PLATFORM" "$SDK_NAME" "$MIN_VERSION" "$TRIPLE_OS" "$LIB_BASENAME"
+done
 
 cp "$THORVG_DIR/src/bindings/capi/thorvg_capi.h" "$HEADERS_DIR/"
 cat > "$HEADERS_DIR/module.modulemap" << 'EOF'
@@ -131,17 +150,18 @@ module ThorVG {
 }
 EOF
 
-mkdir -p "$TEMP_DIR/libs"
-cp "${BUILD_DIR}/macosx-arm64/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-macos.a"
-cp "${BUILD_DIR}/iphoneos-arm64/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-ios.a"
-cp "${BUILD_DIR}/iphonesimulator-arm64/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-iossimulator.a"
-
 echo -e "${YELLOW}=== Creating XCFramework ===${NC}"
 rm -rf "$OUTPUT_DIR"
 xcodebuild -create-xcframework \
   -library "$TEMP_DIR/libs/libthorvg-macos.a" -headers "$HEADERS_DIR" \
   -library "$TEMP_DIR/libs/libthorvg-ios.a" -headers "$HEADERS_DIR" \
   -library "$TEMP_DIR/libs/libthorvg-iossimulator.a" -headers "$HEADERS_DIR" \
+  -library "$TEMP_DIR/libs/libthorvg-tvos.a" -headers "$HEADERS_DIR" \
+  -library "$TEMP_DIR/libs/libthorvg-tvossimulator.a" -headers "$HEADERS_DIR" \
+  -library "$TEMP_DIR/libs/libthorvg-watchos.a" -headers "$HEADERS_DIR" \
+  -library "$TEMP_DIR/libs/libthorvg-watchossimulator.a" -headers "$HEADERS_DIR" \
+  -library "$TEMP_DIR/libs/libthorvg-xros.a" -headers "$HEADERS_DIR" \
+  -library "$TEMP_DIR/libs/libthorvg-xrossimulator.a" -headers "$HEADERS_DIR" \
   -output "$OUTPUT_DIR"
 
 mkdir -p "${LIB_DIR}/include"
@@ -154,5 +174,4 @@ rm -rf "$TEMP_DIR"
 echo -e "${GREEN}Done.${NC}"
 echo -e "${GREEN}XCFramework: ${OUTPUT_DIR}${NC}"
 du -sh "$OUTPUT_DIR"
-lipo -info "$OUTPUT_DIR"/macos-*/libthorvg-macos.a 2>/dev/null \
-  || lipo -info "$OUTPUT_DIR"/macos-*/libthorvg-1.a
+find "$OUTPUT_DIR" -name '*.a' -exec lipo -info {} \;

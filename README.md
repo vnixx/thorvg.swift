@@ -9,7 +9,7 @@ Personal SPM distribution of [ThorVG](https://github.com/thorvg/thorvg) focused 
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/vnixx/thorvg.swift.git", from: "0.0.1")
+    .package(url: "https://github.com/vnixx/thorvg.swift.git", from: "0.0.3")
 ]
 ```
 
@@ -47,7 +47,7 @@ Disabled: GL / WebGPU, Lottie, PNG/JPG/WebP/TTF, tools, tests.
 
 ThorVG source is cloned at build time (`thorvg/` @ **v1.1.0**, gitignored) — not a submodule — so SPM consumers only download `Package.swift` + the Release zip.
 
-Platforms (Apple Silicon only): macOS **arm64**, iOS **arm64**, iOS Simulator **arm64**.
+Platforms (Apple Silicon only): macOS / iOS / tvOS / watchOS / visionOS (+ Simulator) **arm64**.
 
 Bump ThorVG by changing `THORVG_TAG` / default `v1.1.0` in `scripts/build_frameworks.sh`.
 

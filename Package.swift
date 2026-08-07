@@ -5,7 +5,10 @@ let package = Package(
     name: "ThorVG",
     platforms: [
         .iOS(.v13),
-        .macOS(.v10_15)
+        .macOS(.v10_15),
+        .tvOS(.v13),
+        .watchOS(.v7),
+        .visionOS(.v1)
     ],
     products: [
         .library(

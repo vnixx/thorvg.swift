@@ -108,7 +108,7 @@ SVG-focused ThorVG binary for Apple platforms (personal fork of \`thorvg.swift\`
 - Engine: **CPU** software rasterizer
 - Loader: **SVG** only (no Lottie / PNG / JPG / WebP / TTF)
 - Binding: **C API** (\`thorvg_capi.h\`)
-- Platforms: macOS (arm64), iOS (arm64), iOS Simulator (arm64) — Apple Silicon only
+- Platforms: macOS / iOS / tvOS / watchOS / visionOS (+ Simulator) arm64 — Apple Silicon only
 
 ### Install
 
@@ -135,7 +135,7 @@ import PackageDescription
 
 let package = Package(
     name: "ThorVGVerify",
-    platforms: [.iOS(.v13), .macOS(.v10_15)],
+    platforms: [.iOS(.v13), .macOS(.v10_15), .tvOS(.v13), .watchOS(.v7), .visionOS(.v1)],
     dependencies: [
         .package(url: "https://github.com/${OWNER_REPO}.git", exact: "${VERSION}")
     ],
