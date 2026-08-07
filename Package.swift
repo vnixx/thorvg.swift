@@ -18,8 +18,8 @@ let package = Package(
         // URL / checksum are rewritten by scripts/release.sh on each release.
         .binaryTarget(
             name: "ThorVG",
-            url: "https://github.com/vnixx/thorvg.swift/releases/download/0.0.1/ThorVG.xcframework.zip",
-            checksum: "5de79a113c1c87a70be49a8d30449c9ba2e9a4acc7d8e8c5fc6545b014f76d87"
+            url: "https://github.com/vnixx/thorvg.swift/releases/download/0.0.2/ThorVG.xcframework.zip",
+            checksum: "fb36a9cec20d54fa42f78c7d09527b773389a83cd76882dc25599e24b8f95287"
         )
     ]
 )
