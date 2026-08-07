@@ -28,3 +28,4 @@ ThorVG.xcframework.zip
 # Meson
 meson-private/
 meson-logs/
+thorvg/

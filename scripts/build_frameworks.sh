@@ -20,9 +20,10 @@ HEADERS_DIR="${TEMP_DIR}/Headers"
 
 echo -e "${GREEN}Building SVG-trimmed ThorVG XCFramework...${NC}"
 
+THORVG_TAG="${THORVG_TAG:-v1.1.0}"
 if [[ ! -f "$THORVG_DIR/meson.build" ]]; then
-  echo -e "${RED}Error: thorvg submodule missing. Run: git submodule update --init --recursive${NC}"
-  exit 1
+  echo -e "${YELLOW}Cloning thorvg ${THORVG_TAG}...${NC}"
+  git clone --depth 1 --branch "$THORVG_TAG" https://github.com/thorvg/thorvg.git "$THORVG_DIR"
 fi
 
 command -v meson >/dev/null || { echo -e "${RED}brew install meson${NC}"; exit 1; }

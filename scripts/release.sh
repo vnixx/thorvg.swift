@@ -143,7 +143,7 @@ let package = Package(
         .executableTarget(
             name: "ThorVGVerify",
             dependencies: [
-                .product(name: "ThorVG", package: "ThorVGSwift")
+                .product(name: "ThorVG", package: "thorvg.swift")
             ]
         )
     ]
