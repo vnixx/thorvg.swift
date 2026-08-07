@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build a Ruyi-oriented ThorVG.xcframework (CPU + SVG + C API only).
-# Adapted from official thorvg/thorvg.swift scripts, trimmed for SVG icon rendering.
+# Apple Silicon only (macOS arm64 / iOS arm64 / iOS Simulator arm64).
 set -euo pipefail
 
 RED='\033[0;31m'
@@ -18,11 +18,11 @@ TEMP_DIR="temp_frameworks"
 LIB_DIR="lib"
 HEADERS_DIR="${TEMP_DIR}/Headers"
 
-echo -e "${GREEN}Building SVG-trimmed ThorVG XCFramework...${NC}"
+echo -e "${GREEN}Building SVG-trimmed ThorVG XCFramework (arm64 only)...${NC}"
 
 THORVG_TAG="${THORVG_TAG:-v1.1.0}"
 if [[ ! -f "$THORVG_DIR/meson.build" ]]; then
-  echo -e "${YELLOW}Cloning thorvg ${THORVG_TAG}...${NC}"
+  echo -e "${YELLOW}Cloning thorvg ${THORVG_TAG} (shallow)...${NC}"
   git clone --depth 1 --branch "$THORVG_TAG" https://github.com/thorvg/thorvg.git "$THORVG_DIR"
 fi
 
@@ -56,8 +56,7 @@ MESON_BASE=(
   -Dstrip=true
 )
 
-MESON_MACOS_ARM=("${MESON_BASE[@]}" -Dsimd=true)
-MESON_MACOS_X86=("${MESON_BASE[@]}" -Dsimd=false)
+MESON_MACOS=("${MESON_BASE[@]}" -Dsimd=true)
 MESON_IOS=("${MESON_BASE[@]}" -Dsimd=false)
 
 create_cross_file() {
@@ -100,17 +99,10 @@ build_for_platform() {
 
   if [[ "$PLATFORM" == "macosx" ]]; then
     local MAC_MIN="-mmacosx-version-min=10.15"
-    if [[ "$ARCH" == "x86_64" ]]; then
-      meson setup "$BUILD_PATH" "$THORVG_DIR" \
-        "${MESON_MACOS_X86[@]}" \
-        -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
-        -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
-    else
-      meson setup "$BUILD_PATH" "$THORVG_DIR" \
-        "${MESON_MACOS_ARM[@]}" \
-        -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
-        -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
-    fi
+    meson setup "$BUILD_PATH" "$THORVG_DIR" \
+      "${MESON_MACOS[@]}" \
+      -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
+      -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
   else
     local CROSS_FILE="$BUILD_DIR/cross-${PLATFORM}-${ARCH}.txt"
     create_cross_file "$ARCH" "$SDK_PATH" "$PLATFORM" "$CROSS_FILE"
@@ -122,17 +114,15 @@ build_for_platform() {
   meson compile -C "$BUILD_PATH"
 }
 
-echo -e "${YELLOW}=== macOS ===${NC}"
+echo -e "${YELLOW}=== macOS (arm64) ===${NC}"
 build_for_platform "arm64" "macosx" ""
-build_for_platform "x86_64" "macosx" ""
 
-echo -e "${YELLOW}=== iOS device ===${NC}"
+echo -e "${YELLOW}=== iOS device (arm64) ===${NC}"
 build_for_platform "arm64" "iphoneos" "$IPHONEOS_SDK"
 
-echo -e "${YELLOW}=== iOS simulator ===${NC}"
+echo -e "${YELLOW}=== iOS simulator (arm64) ===${NC}"
 build_for_platform "arm64" "iphonesimulator" "$IPHONESIMULATOR_SDK"
 
-# Headers / modulemap for all slices
 cp "$THORVG_DIR/src/bindings/capi/thorvg_capi.h" "$HEADERS_DIR/"
 cat > "$HEADERS_DIR/module.modulemap" << 'EOF'
 module ThorVG {
@@ -142,10 +132,7 @@ module ThorVG {
 EOF
 
 mkdir -p "$TEMP_DIR/libs"
-lipo -create \
-  "${BUILD_DIR}/macosx-arm64/src/libthorvg-1.a" \
-  "${BUILD_DIR}/macosx-x86_64/src/libthorvg-1.a" \
-  -output "$TEMP_DIR/libs/libthorvg-macos.a"
+cp "${BUILD_DIR}/macosx-arm64/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-macos.a"
 cp "${BUILD_DIR}/iphoneos-arm64/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-ios.a"
 cp "${BUILD_DIR}/iphonesimulator-arm64/src/libthorvg-1.a" "$TEMP_DIR/libs/libthorvg-iossimulator.a"
 
@@ -157,7 +144,6 @@ xcodebuild -create-xcframework \
   -library "$TEMP_DIR/libs/libthorvg-iossimulator.a" -headers "$HEADERS_DIR" \
   -output "$OUTPUT_DIR"
 
-# Standalone macOS lib for local hacking
 mkdir -p "${LIB_DIR}/include"
 cp "$TEMP_DIR/libs/libthorvg-macos.a" "${LIB_DIR}/libthorvg-1.a"
 cp "$HEADERS_DIR/thorvg_capi.h" "${LIB_DIR}/include/"
@@ -168,3 +154,5 @@ rm -rf "$TEMP_DIR"
 echo -e "${GREEN}Done.${NC}"
 echo -e "${GREEN}XCFramework: ${OUTPUT_DIR}${NC}"
 du -sh "$OUTPUT_DIR"
+lipo -info "$OUTPUT_DIR"/macos-*/libthorvg-macos.a 2>/dev/null \
+  || lipo -info "$OUTPUT_DIR"/macos-*/libthorvg-1.a

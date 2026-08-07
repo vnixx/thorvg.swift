@@ -108,7 +108,7 @@ SVG-focused ThorVG binary for Apple platforms (personal fork of \`thorvg.swift\`
 - Engine: **CPU** software rasterizer
 - Loader: **SVG** only (no Lottie / PNG / JPG / WebP / TTF)
 - Binding: **C API** (\`thorvg_capi.h\`)
-- Platforms: macOS (arm64+x86_64), iOS (arm64), iOS Simulator (arm64)
+- Platforms: macOS (arm64), iOS (arm64), iOS Simulator (arm64) — Apple Silicon only
 
 ### Install
 
