@@ -18,6 +18,19 @@ import ThorVG
 // C API from thorvg_capi.h
 ```
 
+## Loading SVG
+
+ThorVG needs the **original SVG source** (file path or in-memory XML/`Data`).
+
+**Do not put SVGs in an Xcode Asset Catalog.** Assets compile SVG into bitmaps (or Apple’s internal vector form for `UIImage`). Neither exposes the SVG XML, so ThorVG cannot parse them — with or without “Preserve Vector Data”.
+
+Put `.svg` files in the app / package **bundle** (Copy Bundle Resources / SPM `resources`) and load via:
+
+- `tvg_picture_load(picture, path)` — file URL from `Bundle`
+- `tvg_picture_load_data(..., "svg", ...)` — `Data` or string in memory
+
+Asset Catalog is fine for system `UIImage` / SwiftUI `Image`; use a separate bundle resource for ThorVG.
+
 ## Trimmed build
 
 Meson options used for the binary:
