@@ -34,6 +34,10 @@ Disabled: GL / WebGPU, Lottie, PNG/JPG/WebP/TTF, tools, tests.
 
 ThorVG source is cloned at build time (`thorvg/` @ **v1.1.0**, gitignored) — not a submodule — so SPM consumers only download `Package.swift` + the Release zip.
 
+Platforms (Apple Silicon only): macOS **arm64**, iOS **arm64**, iOS Simulator **arm64**.
+
+Bump ThorVG by changing `THORVG_TAG` / default `v1.1.0` in `scripts/build_frameworks.sh`.
+
 ## Release (workflow_dispatch)
 
 Preferred: GitHub → Actions → **Release XCFramework** → Run workflow → enter version.
@@ -41,7 +45,6 @@ Preferred: GitHub → Actions → **Release XCFramework** → Run workflow → e
 Locally (same pipeline):
 
 ```bash
-git submodule update --init --recursive
 brew install meson ninja
 ./scripts/release.sh 0.0.1
 ```
