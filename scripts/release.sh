@@ -91,7 +91,7 @@ Publish SVG-trimmed ThorVG XCFramework binary SPM package.
 EOF
 )"
 
-git tag -a "$TAG" -m "ThorVGSwift ${TAG} (SVG / CPU / C API)"
+git tag -a "$TAG" -m "ThorVG ${TAG} (SVG / CPU / C API)"
 
 echo -e "${YELLOW}[5/6] Push + GitHub Release${NC}"
 git push origin HEAD
@@ -100,7 +100,7 @@ git push origin "$TAG"
 gh release create "$TAG" "$ZIP_PATH" \
   --title "ThorVG ${TAG}" \
   --notes "$(cat <<EOF
-## ThorVGSwift ${TAG}
+## ThorVG ${TAG}
 
 SVG-focused ThorVG binary for Apple platforms (personal fork of \`thorvg.swift\`; not the official Lottie-oriented package).
 
@@ -144,7 +144,8 @@ let package = Package(
             name: "ThorVGVerify",
             dependencies: [
                 .product(name: "ThorVG", package: "thorvg.swift")
-            ]
+            ],
+            linkerSettings: [.linkedLibrary("c++")]
         )
     ]
 )
@@ -159,12 +160,14 @@ _ = tvg_engine_init(0)
 _ = tvg_engine_term()
 EOF
 
-# Give GitHub a moment to serve the asset
+# Give GitHub a moment to serve the asset; clear local fingerprint if we retagged.
+rm -f "${HOME}/Library/org.swift.swiftpm/security/fingerprints/thorvg.swift-"*.json 2>/dev/null || true
 sleep 3
 (
   cd "$VERIFY_DIR"
   swift package resolve
   swift build 2>&1
+  swift run 2>&1
 )
 
 echo -e "${GREEN}Release ${TAG} published.${NC}"
