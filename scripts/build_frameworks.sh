@@ -99,16 +99,17 @@ build_for_platform() {
   echo -e "${GREEN}Building ${PLATFORM} ${ARCH}...${NC}"
 
   if [[ "$PLATFORM" == "macosx" ]]; then
+    local MAC_MIN="-mmacosx-version-min=10.15"
     if [[ "$ARCH" == "x86_64" ]]; then
       meson setup "$BUILD_PATH" "$THORVG_DIR" \
         "${MESON_MACOS_X86[@]}" \
-        -Dcpp_args="-arch $ARCH" \
-        -Dcpp_link_args="-arch $ARCH"
+        -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
+        -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
     else
       meson setup "$BUILD_PATH" "$THORVG_DIR" \
         "${MESON_MACOS_ARM[@]}" \
-        -Dcpp_args="-arch $ARCH" \
-        -Dcpp_link_args="-arch $ARCH"
+        -Dcpp_args="-arch $ARCH ${MAC_MIN}" \
+        -Dcpp_link_args="-arch $ARCH ${MAC_MIN}"
     fi
   else
     local CROSS_FILE="$BUILD_DIR/cross-${PLATFORM}-${ARCH}.txt"

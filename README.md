@@ -32,7 +32,7 @@ Meson options used for the binary:
 
 Disabled: GL / WebGPU, Lottie, PNG/JPG/WebP/TTF, tools, tests.
 
-ThorVG source is vendored as submodule `thorvg` @ **v1.1.0**.
+ThorVG source is cloned at build time (`thorvg/` @ **v1.1.0**, gitignored) — not a submodule — so SPM consumers only download `Package.swift` + the Release zip.
 
 ## Release (workflow_dispatch)
 
